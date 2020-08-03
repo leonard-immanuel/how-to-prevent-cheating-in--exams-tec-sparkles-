@@ -207,3 +207,82 @@ ylabel('state')
 title('Multi Class Markov Chain Modelling');
 %%
 %Estimation of transition probability matrix.
+
+%Plot the sequence:
+
+figure(3)
+subplot(2,1,1)
+plot(y_obs(1:T),'-o','linewidth',1.5)          %plot the first T states of the sequence
+xlim([-10 T+10])
+ylim([0.5 numStates+0.5])
+set(gca,'YTick',1:numStates)
+xlabel('observations')
+ylabel('state')
+title('Multi Class Markov Chain Modelling');
+%%
+%Estimation of transition probability matrix.
+
+P_MC = zeros(numStates,numStates);
+for t=1:L-1
+    P_MC(y_obs(t),y_obs(t+1))= P_MC(y_obs(t),y_obs(t+1))+1;
+end
+P_MC_cum = P_MC;
+for j=2:numStates
+    P_MC_cum(:,j) = P_MC_cum(:,j-1) + P_MC(:,j);     %cumulative version of P.
+end
+for j=1:numStates
+    P_MC(:,j) = P_MC(:,j)./P_MC_cum(:,numStates);                 %Normalize transition matrix
+end
+P_MC_cum = P_MC;
+for j=2:numStates
+    P_MC_cum(:,j) = P_MC_cum(:,j-1) + P_MC(:,j);     %normalized cumulative version of P.
+end
+
+%Compare estimated matrix P_MC with initial matrix P.
+
+P
+P_MC
+
+%%
+%Produce sequence with the Markov chain.
+
+y_MC = zeros(L,1);                %y_obs will be the input or OBServational sequence.
+y_MC(1) = 1;                      %sequence starts with a 1;
+
+for t=1:L-1                       %construct entire sequence
+    r = rand;
+    y_MC(t+1) = sum(r>P_MC_cum(y_MC(t),:))+1;
+end
+
+%Plot sequence:
+
+figure(3)
+subplot(2,1,2)
+plot(y_MC(1:T),'-rs','linewidth',2)          %plot the first T states of the sequence (T defined above).
+xlim([-10 T+10])
+ylim([0.5 numStates+0.5])
+set(gca,'YTick',1:numStates)
+xlabel('Markov Chain')
+ylabel('state')
+
+trainSamples = [CoordinatesGT{1,1} CoordinatesGT{1,2} CoordinatesGT{2,1} CoordinatesGT{2,2}]';
+trainClasses = {'1', '1', '1', '1', '1', '1','1', '1', '1', '1', '1', '1',...
+                '2', '2', '2', '2', '2', '2','2', '2', '2', '2', '2', '2'}; 
+            %drawing samples and discriminant line
+
+testSamples = (pred.coords)';
+ 
+%************************* MultiClass LDA ***************************************
+
+mLDA = LDA(trainSamples, trainClasses);
+mLDA.Compute();
+
+transformedTrainSamples = mLDA.Transform(trainSamples, 1);
+transformedTestSamples = mLDA.Transform(testSamples, 1);
+
+%************************* MultiClass LDA ***************************************
+
+calculatedClases = knnclassify(transformedTestSamples, transformedTrainSamples, trainClasses);
+
+
+
